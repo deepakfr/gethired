@@ -64,22 +64,25 @@ def tailor_resume_and_coverletter(existing_resume, job_description):
 # 🏠 Streamlit App
 st.set_page_config(page_title="GetHired - Tailor My Resume", page_icon="📝")
 st.title("📝 GetHired - Tailor My Resume")
-st.caption("Upload your Resume (PDF or DOC) + Job Description (PDF or DOC). Get a tailored resume and cover letter!")
+st.caption("Upload your Resume (PDF or DOC) + Paste the Job Description. Get a tailored resume and cover letter!")
 
 st.markdown("---")
 
 # Upload section
-st.subheader("📄 Upload Files")
-existing_resume_file = st.file_uploader("Upload Your Current Resume (PDF, DOC, or TXT)", type=["pdf", "docx", "txt"])
-job_description_file = st.file_uploader("Upload the Job Description (PDF, DOC, or TXT)", type=["pdf", "docx", "txt"])
+st.subheader("📄 Upload Your Current Resume")
+existing_resume_file = st.file_uploader("Upload Your Resume (PDF, DOC, or TXT)", type=["pdf", "docx", "txt"])
+
+st.markdown("---")
+st.subheader("🖊️ Paste Job Description")
+job_description_text = st.text_area("Paste the Job Description here...")
 
 if st.button("🚀 Tailor Resume & Create Cover Letter"):
-    if existing_resume_file and job_description_file:
+    if existing_resume_file and job_description_text.strip():
         existing_resume = extract_text(existing_resume_file)
-        job_description = extract_text(job_description_file)
+        job_description = job_description_text
 
-        if not existing_resume.strip() or not job_description.strip():
-            st.error("❌ Could not extract text properly. Please check the files.")
+        if not existing_resume.strip():
+            st.error("❌ Could not extract text from the resume. Please check the file.")
         else:
             with st.spinner("✍️ Tailoring your Resume and writing your Cover Letter..."):
                 output = tailor_resume_and_coverletter(existing_resume, job_description)
@@ -104,4 +107,4 @@ if st.button("🚀 Tailor Resume & Create Cover Letter"):
             else:
                 st.error("❌ Unexpected output format. Please try again.")
     else:
-        st.warning("⚠️ Please upload both files before proceeding!")
+        st.warning("⚠️ Please upload your Resume and paste the Job Description before proceeding!")
