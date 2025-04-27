@@ -47,10 +47,12 @@ def tailor_resume_and_coverletter(existing_resume, job_description):
     prompt = f"""
     Act as a professional resume writer and career expert.
 
+    
     IMPORTANT:
     - Analyze the Job Description language.
     - Write the Resume and Cover Letter in the same language as the Job Description.
     - Maintain native-level fluency and tone.
+
 
     Based on the following current resume:
     {existing_resume}
