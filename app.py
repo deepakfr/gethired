@@ -1,7 +1,10 @@
 import streamlit as st
 import pdfplumber
 import docx
+from docx import Document
+from fpdf import FPDF
 import requests
+from io import BytesIO
 
 # ✅ Set your Groq API Key
 GROQ_API_KEY = "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"
@@ -53,7 +56,6 @@ def tailor_resume_and_coverletter(existing_resume, job_description):
     ### Cover Letter
     [cover letter here]
     """
-
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
@@ -75,6 +77,45 @@ def tailor_resume_and_coverletter(existing_resume, job_description):
         return result["choices"][0]["message"]["content"]
     else:
         raise Exception(f"❌ Error from Groq API: {response.status_code} - {response.text}")
+
+# 📄 Create DOCX file
+def create_docx(resume, cover_letter):
+    doc = Document()
+    doc.add_heading('Tailored Resume', 0)
+    doc.add_paragraph(resume)
+    doc.add_page_break()
+    doc.add_heading('Cover Letter', 0)
+    doc.add_paragraph(cover_letter)
+
+    file_stream = BytesIO()
+    doc.save(file_stream)
+    file_stream.seek(0)
+    return file_stream
+
+# 📄 Create PDF file
+class PDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 16)
+        self.cell(0, 10, 'GetHired Resume & Cover Letter', ln=True, align='C')
+        self.ln(10)
+
+    def add_content(self, title, content):
+        self.set_font('Arial', 'B', 14)
+        self.cell(0, 10, title, ln=True)
+        self.ln(4)
+        self.set_font('Arial', '', 12)
+        self.multi_cell(0, 10, content)
+        self.ln(8)
+
+def create_pdf(resume, cover_letter):
+    pdf = PDF()
+    pdf.add_page()
+    pdf.add_content("Tailored Resume", resume)
+    pdf.add_page()
+    pdf.add_content("Cover Letter", cover_letter)
+
+    pdf_bytes = pdf.output(dest='S').encode('latin1')
+    return pdf_bytes
 
 # 🏠 Streamlit App
 st.set_page_config(page_title="GetHired - Tailor My Resume", page_icon="📝")
@@ -117,8 +158,25 @@ if st.button("🚀 Tailor Resume & Create Cover Letter"):
                         st.subheader("✉️ Cover Letter:")
                         st.code(cover_letter)
 
-                        st.download_button("📥 Download Tailored Resume", tailored_resume, file_name="Tailored_Resume.txt")
-                        st.download_button("📥 Download Cover Letter", cover_letter, file_name="Cover_Letter.txt")
+                        # Create DOCX and PDF
+                        docx_file = create_docx(tailored_resume, cover_letter)
+                        pdf_file = create_pdf(tailored_resume, cover_letter)
+
+                        # Download buttons
+                        st.download_button(
+                            "📥 Download DOCX (Word)",
+                            data=docx_file,
+                            file_name="Tailored_Resume_and_CoverLetter.docx",
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        )
+
+                        st.download_button(
+                            "📥 Download PDF (Professional)",
+                            data=pdf_file,
+                            file_name="Tailored_Resume_and_CoverLetter.pdf",
+                            mime="application/pdf"
+                        )
+
                     else:
                         st.error("❌ Unexpected output format. Please try again.")
                 except Exception as e:
