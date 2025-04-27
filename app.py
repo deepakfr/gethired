@@ -1,14 +1,13 @@
 import streamlit as st
-import openai
 import pdfplumber
 import docx
-from io import BytesIO
+import requests
 
-# ✅ Set your Groq/OpenAI Key
-openai.api_key = "gsk_WhI4OpClTGCT2LxxvSpMWGdyb3FYBVUkG8jUO0HKpwK6OCylD8U"
-openai.api_base = "https://api.groq.com/openai/v1"
+# ✅ Set your Groq API Key
+GROQ_API_KEY = "gsk_WhI4OpClTGCT2LxxvSpMWGdyb3FYBVUkG8jUO0HKpwK6OCylD8U"
+GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 
-# 🧠 Read file content
+# 🧠 Function to extract text from uploaded file
 def extract_text(file):
     if file.type == "application/pdf":
         with pdfplumber.open(file) as pdf:
@@ -22,7 +21,7 @@ def extract_text(file):
     else:
         return file.read().decode("utf-8")
 
-# 🧠 AI function to tailor Resume and Cover Letter
+# 🧠 Function to send prompt to Groq API
 def tailor_resume_and_coverletter(existing_resume, job_description):
     prompt = f"""
     Act as a professional career coach and resume writer.
@@ -54,19 +53,33 @@ def tailor_resume_and_coverletter(existing_resume, job_description):
     ### Cover Letter
     [cover letter here]
     """
-    response = openai.chat.completions.create(
-        model="llama3-8b-8192",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
-    )
-    return response.choices[0].message.content
 
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
 
+    payload = {
+        "model": "llama3-8b-8192",
+        "messages": [
+            {"role": "system", "content": "You are a helpful AI assistant."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": 0.3
+    }
+
+    response = requests.post(GROQ_ENDPOINT, headers=headers, json=payload)
+
+    if response.status_code == 200:
+        result = response.json()
+        return result["choices"][0]["message"]["content"]
+    else:
+        raise Exception(f"❌ Error from Groq API: {response.status_code} - {response.text}")
 
 # 🏠 Streamlit App
 st.set_page_config(page_title="GetHired - Tailor My Resume", page_icon="📝")
 st.title("📝 GetHired - Tailor My Resume")
-st.caption("Upload your Resume (PDF or DOC) + Paste the Job Description. Get a tailored resume and cover letter!")
+st.caption("Upload your Resume (PDF or DOC) + Paste the Job Description. Get a tailored Resume and Cover Letter!")
 
 st.markdown("---")
 
@@ -84,29 +97,31 @@ if st.button("🚀 Tailor Resume & Create Cover Letter"):
         job_description = job_description_text
 
         if not existing_resume.strip():
-            st.error("❌ Could not extract text from the resume. Please check the file.")
+            st.error("❌ Could not extract text from the uploaded resume. Please check the file.")
         else:
             with st.spinner("✍️ Tailoring your Resume and writing your Cover Letter..."):
-                output = tailor_resume_and_coverletter(existing_resume, job_description)
+                try:
+                    output = tailor_resume_and_coverletter(existing_resume, job_description)
+                    st.success("✅ Done! Here are your tailored documents:")
 
-            st.success("✅ Done! Here are your tailored documents:")
+                    # Split resume and cover letter
+                    if "### Cover Letter" in output:
+                        tailored_resume, cover_letter = output.split("### Cover Letter")
+                        tailored_resume = tailored_resume.replace("### Tailored Resume", "").strip()
+                        cover_letter = cover_letter.strip()
 
-            # Split resume and cover letter
-            if "### Cover Letter" in output:
-                tailored_resume, cover_letter = output.split("### Cover Letter")
-                tailored_resume = tailored_resume.replace("### Tailored Resume", "").strip()
-                cover_letter = cover_letter.strip()
+                        st.markdown("---")
+                        st.subheader("📄 Tailored Resume:")
+                        st.code(tailored_resume)
 
-                st.markdown("---")
-                st.subheader("📄 Tailored Resume:")
-                st.code(tailored_resume)
+                        st.subheader("✉️ Cover Letter:")
+                        st.code(cover_letter)
 
-                st.subheader("✉️ Cover Letter:")
-                st.code(cover_letter)
-
-                st.download_button("📥 Download Tailored Resume", tailored_resume, file_name="Tailored_Resume.txt")
-                st.download_button("📥 Download Cover Letter", cover_letter, file_name="Cover_Letter.txt")
-            else:
-                st.error("❌ Unexpected output format. Please try again.")
+                        st.download_button("📥 Download Tailored Resume", tailored_resume, file_name="Tailored_Resume.txt")
+                        st.download_button("📥 Download Cover Letter", cover_letter, file_name="Cover_Letter.txt")
+                    else:
+                        st.error("❌ Unexpected output format. Please try again.")
+                except Exception as e:
+                    st.error(str(e))
     else:
         st.warning("⚠️ Please upload your Resume and paste the Job Description before proceeding!")
