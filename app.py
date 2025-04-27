@@ -5,20 +5,12 @@ from docx import Document
 from docx.shared import Pt
 from fpdf import FPDF
 import requests
-import smtplib
-from email.message import EmailMessage
 from io import BytesIO
 import unicodedata
 
 # ✅ Set your Groq API Key
 GROQ_API_KEY = "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"
 GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
-
-# ✅ Set your Email credentials
-SMTP_SERVER = 'smtp.gmail.com'
-SMTP_PORT = 465
-SENDER_EMAIL = 'yourcompanyemail@gmail.com'
-SENDER_PASSWORD = 'your-app-password'
 
 # 🧠 Extract Text
 def extract_text(file):
@@ -146,26 +138,10 @@ def create_single_pdf(full_text):
     pdf.add_body_text(sanitize_text(full_text))
     return pdf.output(dest='S').encode('latin1')
 
-# 📧 Send Email
-def send_email_with_attachments(to_email, docx_data, pdf_data):
-    msg = EmailMessage()
-    msg['Subject'] = "Your Tailored Resume & Cover Letter from GetHired 🎯"
-    msg['From'] = SENDER_EMAIL
-    msg['To'] = to_email
-
-    msg.set_content("Hi there!\n\nPlease find attached your Tailored Resume and Cover Letter. Good luck! 🚀\n\n- GetHired Team")
-
-    msg.add_attachment(docx_data.getvalue(), maintype='application', subtype='vnd.openxmlformats-officedocument.wordprocessingml.document', filename="Tailored_Resume_and_CoverLetter.docx")
-    msg.add_attachment(pdf_data, maintype='application', subtype='pdf', filename="Tailored_Resume_and_CoverLetter.pdf")
-
-    with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
-        smtp.login(SENDER_EMAIL, SENDER_PASSWORD)
-        smtp.send_message(msg)
-
 # 🏠 Streamlit App
 st.set_page_config(page_title="GetHired - Tailor My Resume", page_icon="📝")
 st.title("📝 GetHired - Tailor My Resume")
-st.caption("Upload Resume ➔ Auto-detect Info ➔ Tailored DOCX + PDF ➔ Email to yourself!")
+st.caption("Upload Resume ➔ Auto-detect Info ➔ Tailored DOCX + PDF ➔ Download instantly!")
 
 st.markdown("---")
 
@@ -195,17 +171,8 @@ if existing_resume_file:
                     st.download_button("📥 Download DOCX", data=docx_file, file_name="Tailored_Resume_and_CoverLetter.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
                     st.download_button("📥 Download Beautiful PDF", data=pdf_file, file_name="Tailored_Resume_and_CoverLetter.pdf", mime="application/pdf")
 
-                    st.markdown("---")
-                    st.subheader("📩 Email Your Documents")
-                    user_email = st.text_input("Enter your Email address:")
+                    st.balloons()
 
-                    if st.button("📤 Send to My Email"):
-                        if user_email:
-                            send_email_with_attachments(user_email, docx_file, pdf_file)
-                            st.success("🎉 Your documents have been emailed successfully!")
-                            st.balloons()
-                        else:
-                            st.warning("⚠️ Please enter a valid email address.")
                 except Exception as e:
                     st.error(str(e))
         else:
