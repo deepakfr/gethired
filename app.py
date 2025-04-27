@@ -11,7 +11,7 @@ from io import BytesIO
 import unicodedata
 
 # ✅ Set your Groq API Key
-GROQ_API_KEY = "your-groq-api-key"
+GROQ_API_KEY = "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"
 GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 
 # ✅ Set your Email credentials
