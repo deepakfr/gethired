@@ -1,9 +1,10 @@
 import streamlit as st
 import openai
 from datetime import datetime
+from fpdf import FPDF
 
 # ✅ Set your Groq/OpenAI Key
-openai.api_key = "YOUR_GROQ_API_KEY"
+openai.api_key = "gsk_WhI4OpClTGCT2LxxvSpMWGdyb3FYBVUkG8jUO0HKpwK6OCylD8U"
 openai.api_base = "https://api.groq.com/openai/v1"
 
 # 🧠 AI function to generate ATS-Friendly Resume
@@ -67,6 +68,30 @@ def generate_cover_letter(name, title, job_title, company_name, motivation):
     )
     return response.choices[0].message.content
 
+# 🧾 PDF Export Function
+class PDF(FPDF):
+    def header(self):
+        self.set_font('Arial', 'B', 16)
+        self.cell(0, 10, 'GetHired', ln=True, align='C')
+        self.ln(10)
+
+    def add_content(self, title, content):
+        self.set_font('Arial', 'B', 14)
+        self.cell(0, 10, title, ln=True)
+        self.ln(4)
+        self.set_font('Arial', '', 12)
+        self.multi_cell(0, 10, content)
+        self.ln(8)
+
+def create_pdf_file(name, resume, cover_letter):
+    pdf = PDF()
+    pdf.add_page()
+    pdf.add_content("Resume", resume)
+    pdf.add_page()
+    pdf.add_content("Cover Letter", cover_letter)
+
+    return pdf.output(dest='S').encode('latin1')
+
 # 🏠 Streamlit App
 st.set_page_config(page_title="GetHired - Resume & Cover Letter Generator", page_icon="📝")
 st.title("📝 GetHired - Resume & Cover Letter Generator")
@@ -112,10 +137,19 @@ if submitted:
         st.subheader("✉️ Your Cover Letter:")
         st.code(cover_letter)
 
-        # Download buttons
-        st.download_button("📥 Download Resume", resume, file_name=f"{name.replace(' ', '_')}_Resume.txt")
-        st.download_button("📥 Download Cover Letter", cover_letter, file_name=f"{name.replace(' ', '_')}_CoverLetter.txt")
+        # Download buttons (TXT)
+        st.download_button("📥 Download Resume (TXT)", resume, file_name=f"{name.replace(' ', '_')}_Resume.txt")
+        st.download_button("📥 Download Cover Letter (TXT)", cover_letter, file_name=f"{name.replace(' ', '_')}_CoverLetter.txt")
+
+        # Generate combined PDF
+        pdf_bytes = create_pdf_file(name, resume, cover_letter)
+        st.download_button(
+            "📥 Download Full PDF (Resume + Cover Letter)",
+            pdf_bytes,
+            file_name=f"{name.replace(' ', '_')}_Application.pdf",
+            mime="application/pdf"
+        )
 
         st.markdown("---")
 
-        st.info("💬 Want premium features like PDF export, AI job matching, and expert reviews? Coming soon!")
+        st.info("💬 Want premium features like PDF styling, AI job matching, and expert resume reviews? Coming soon!")
