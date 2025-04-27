@@ -16,8 +16,8 @@ GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 # ✅ Set your Email credentials
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 465
-SENDER_EMAIL = 'yourcompanyemail@gmail.com'  # 👈 Your sender Gmail
-SENDER_PASSWORD = 'yourapppassword'          # 👈 App password (not regular Gmail password!)
+SENDER_EMAIL = 'yourcompanyemail@gmail.com'  # 👈 Update your sender Gmail
+SENDER_PASSWORD = 'yourapppassword'          # 👈 Use Gmail App Password
 
 # 🧠 Extract Text
 def extract_text(file):
@@ -34,37 +34,44 @@ def extract_text(file):
     else:
         return file.read().decode("utf-8")
 
-# 🧠 Unicode Safe Text
+# 🧠 Unicode Safe
 def sanitize_text(text):
     return unicodedata.normalize('NFKD', text).encode('latin-1', 'ignore').decode('latin-1')
 
 # 🧠 Call Groq API
 def tailor_resume_and_coverletter(existing_resume, job_description):
     prompt = f"""
-    Act as a professional career coach and resume writer.
+    Act as a professional resume writer and career expert.
 
-    Based on the following existing resume:
+    Based on the following current resume:
     {existing_resume}
 
     And the following job description:
     {job_description}
 
     Strict Instructions:
-    - Rewrite the resume to match the job description, emphasizing relevant skills and experiences.
-    - Use keywords from the job description.
-    - Keep it clean, ATS-optimized (no graphics, no fancy tables).
-    - Sections: Summary, Skills, Experience, Education.
-    - Bullet points start with action verbs.
-    - Keep tone formal, no personal pronouns (no "I", "we").
-    - Limit to 2 pages if possible.
+    - Rewrite the resume fully to match the job description.
+    - Structure Resume into these sections:
+      1. Profile Summary (short intro paragraph)
+      2. Contact Information (Email, Phone, LinkedIn)
+      3. Languages
+      4. Skills (Technical & Soft Skills)
+      5. Expertise Areas
+      6. Academic Projects
+      7. Work Experience (achievements-based bullets)
+      8. Education (degrees, certifications)
+      9. Soft Skills
+    - No tables or graphics, clean ATS-friendly text.
+    - Bullet points must start with action verbs.
+    - Tone must be professional, no personal pronouns ("I", "we").
+    - Limit resume to max 2 pages.
 
-    Then, create a Cover Letter:
-    - Personalized to the company/job.
-    - Professional tone.
-    - 3 paragraphs max: intro (enthusiasm), body (skills match), conclusion (call to action).
+    Then write a Cover Letter:
+    - 3 paragraphs (Introduction, Skills Match, Conclusion).
+    - Personalized tone, enthusiastic but formal.
 
     Output format:
-    ### Tailored Resume
+    ### Resume
     [resume here]
 
     ### Cover Letter
@@ -91,10 +98,17 @@ def tailor_resume_and_coverletter(existing_resume, job_description):
 def create_docx(resume, cover_letter):
     doc = Document()
     doc.add_heading('Tailored Resume', 0)
-    doc.add_paragraph(resume)
+    for line in resume.split("\n"):
+        if line.strip():
+            if line.startswith("-"):
+                doc.add_paragraph(line.strip(), style='ListBullet')
+            else:
+                doc.add_paragraph(line.strip())
     doc.add_page_break()
     doc.add_heading('Cover Letter', 0)
-    doc.add_paragraph(cover_letter)
+    for line in cover_letter.split("\n"):
+        if line.strip():
+            doc.add_paragraph(line.strip())
 
     file_stream = BytesIO()
     doc.save(file_stream)
@@ -131,18 +145,16 @@ def create_beautiful_pdf(resume, cover_letter):
     pdf.add_body_text(sanitize_text(cover_letter))
     return pdf.output(dest='S').encode('latin1')
 
-# 📧 Email with Attachments
+# 📧 Send Email
 def send_email_with_attachments(to_email, docx_data, pdf_data):
     msg = EmailMessage()
     msg['Subject'] = "Your Tailored Resume & Cover Letter from GetHired 🎯"
     msg['From'] = SENDER_EMAIL
     msg['To'] = to_email
 
-    msg.set_content("Hi there!\n\nPlease find attached your Tailored Resume and Cover Letter. Best of luck! 🚀\n\n- GetHired Team")
+    msg.set_content("Hi there!\n\nPlease find attached your Tailored Resume and Cover Letter. Good luck! 🚀\n\n- GetHired Team")
 
-    # Attach DOCX
     msg.add_attachment(docx_data.getvalue(), maintype='application', subtype='vnd.openxmlformats-officedocument.wordprocessingml.document', filename="Tailored_Resume_and_CoverLetter.docx")
-    # Attach PDF
     msg.add_attachment(pdf_data, maintype='application', subtype='pdf', filename="Tailored_Resume_and_CoverLetter.pdf")
 
     with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
@@ -152,13 +164,13 @@ def send_email_with_attachments(to_email, docx_data, pdf_data):
 # 🏠 Streamlit App
 st.set_page_config(page_title="GetHired - Tailor My Resume", page_icon="📝")
 st.title("📝 GetHired - Tailor My Resume")
-st.caption("Upload your Resume (PDF, DOC, or TXT) + Paste the Job Description. Get a tailored Resume and Cover Letter!")
+st.caption("Upload Resume ➔ Paste Job ➔ Get tailored DOCX + Beautiful PDF ➔ Email it to yourself!")
 
 st.markdown("---")
 
 # Upload and Input
 st.subheader("📄 Upload Your Current Resume")
-existing_resume_file = st.file_uploader("Upload Your Resume (PDF, DOC, or TXT)", type=["pdf", "docx", "txt"])
+existing_resume_file = st.file_uploader("Upload Resume (PDF, DOCX, or TXT)", type=["pdf", "docx", "txt"])
 
 st.markdown("---")
 st.subheader("🖊️ Paste Job Description")
@@ -178,45 +190,34 @@ if st.button("🚀 Tailor Resume & Create Cover Letter"):
 
                     if "### Cover Letter" in output:
                         tailored_resume, cover_letter = output.split("### Cover Letter")
-                        tailored_resume = tailored_resume.replace("### Tailored Resume", "").strip()
+                        tailored_resume = tailored_resume.replace("### Resume", "").strip()
                         cover_letter = cover_letter.strip()
 
-                        # Create DOCX and Beautiful PDF
+                        # Create files
                         docx_file = create_docx(tailored_resume, cover_letter)
                         pdf_file = create_beautiful_pdf(tailored_resume, cover_letter)
 
-                        st.success("✅ Your Resume & Cover Letter are ready!")
+                        st.success("✅ Documents ready!")
 
-                        st.download_button(
-                            "📥 Download DOCX (Word)",
-                            data=docx_file,
-                            file_name="Tailored_Resume_and_CoverLetter.docx",
-                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                        )
+                        st.download_button("📥 Download DOCX", data=docx_file, file_name="Tailored_Resume_and_CoverLetter.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                        st.download_button("📥 Download Beautiful PDF", data=pdf_file, file_name="Tailored_Resume_and_CoverLetter.pdf", mime="application/pdf")
 
-                        st.download_button(
-                            "📥 Download PDF (Beautiful)",
-                            data=pdf_file,
-                            file_name="Tailored_Resume_and_CoverLetter.pdf",
-                            mime="application/pdf"
-                        )
-
-                        # 📧 Ask for Email
+                        # 📩 Ask for Email
                         st.markdown("---")
-                        st.subheader("📩 Send to your Email")
+                        st.subheader("📩 Email Your Documents")
                         user_email = st.text_input("Enter your Email address:")
 
-                        if st.button("📤 Email me the Documents"):
+                        if st.button("📤 Send to My Email"):
                             if user_email:
                                 send_email_with_attachments(user_email, docx_file, pdf_file)
-                                st.success("🎉 Thank you! Your documents have been emailed to you successfully. Best of luck for your job search!")
+                                st.success("🎉 Thank you! Your documents have been emailed to you successfully!")
                                 st.balloons()
                             else:
                                 st.warning("⚠️ Please enter a valid email address.")
 
                     else:
-                        st.error("❌ Unexpected output format. Please try again.")
+                        st.error("❌ Unexpected output format. Try again.")
                 except Exception as e:
                     st.error(str(e))
     else:
-        st.warning("⚠️ Please upload your Resume and paste the Job Description before proceeding!")
+        st.warning("⚠️ Upload Resume + Paste Job Description to continue.")
