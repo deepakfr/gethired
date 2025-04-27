@@ -150,7 +150,7 @@ def create_single_pdf(full_text):
 # 🏠 Streamlit App
 st.set_page_config(page_title="GetHired - Tailor My Resume (Multi-Lang)", page_icon="📝")
 st.title("📝 GetHired - Tailor My Resume (Multi-Language)")
-st.caption("Upload Resume ➔ Auto-detect Info ➔ Tailored Multilang DOCX + PDF ➔ Download instantly!")
+st.caption("Upload Resume ➔ Auto-detect Info ➔ Tailored Multilang DOCX + PDF ➔ Download instantly!. Powered by deepak labs")
 
 st.markdown("---")
 
