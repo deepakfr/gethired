@@ -4,6 +4,8 @@ import docx
 from docx import Document
 from fpdf import FPDF
 import requests
+import smtplib
+from email.message import EmailMessage
 from io import BytesIO
 import unicodedata
 
@@ -11,7 +13,13 @@ import unicodedata
 GROQ_API_KEY = "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"
 GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 
-# 🧠 Function to extract text from uploaded file
+# ✅ Set your Email credentials
+SMTP_SERVER = 'smtp.gmail.com'
+SMTP_PORT = 465
+SENDER_EMAIL = 'yourcompanyemail@gmail.com'  # 👈 Your sender Gmail
+SENDER_PASSWORD = 'yourapppassword'          # 👈 App password (not regular Gmail password!)
+
+# 🧠 Extract Text
 def extract_text(file):
     if file.type == "application/pdf":
         with pdfplumber.open(file) as pdf:
@@ -26,11 +34,11 @@ def extract_text(file):
     else:
         return file.read().decode("utf-8")
 
-# 🧠 Sanitize text for PDF
+# 🧠 Unicode Safe Text
 def sanitize_text(text):
     return unicodedata.normalize('NFKD', text).encode('latin-1', 'ignore').decode('latin-1')
 
-# 🧠 Function to send prompt to Groq API
+# 🧠 Call Groq API
 def tailor_resume_and_coverletter(existing_resume, job_description):
     prompt = f"""
     Act as a professional career coach and resume writer.
@@ -66,25 +74,20 @@ def tailor_resume_and_coverletter(existing_resume, job_description):
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
     }
-
     payload = {
         "model": "llama3-8b-8192",
-        "messages": [
-            {"role": "system", "content": "You are a helpful AI assistant."},
-            {"role": "user", "content": prompt}
-        ],
+        "messages": [{"role": "system", "content": "You are a helpful AI assistant."},
+                     {"role": "user", "content": prompt}],
         "temperature": 0.3
     }
-
     response = requests.post(GROQ_ENDPOINT, headers=headers, json=payload)
-
     if response.status_code == 200:
         result = response.json()
         return result["choices"][0]["message"]["content"]
     else:
         raise Exception(f"❌ Error from Groq API: {response.status_code} - {response.text}")
 
-# 📄 Create DOCX file
+# 📄 Create DOCX
 def create_docx(resume, cover_letter):
     doc = Document()
     doc.add_heading('Tailored Resume', 0)
@@ -98,30 +101,53 @@ def create_docx(resume, cover_letter):
     file_stream.seek(0)
     return file_stream
 
-# 📄 Create PDF file
-class PDF(FPDF):
+# 📄 Create Beautiful PDF
+class BeautifulPDF(FPDF):
     def header(self):
-        self.set_font('Arial', 'B', 16)
-        self.cell(0, 10, 'GetHired Resume & Cover Letter', ln=True, align='C')
+        self.set_font('Helvetica', 'B', 20)
+        self.set_text_color(30, 30, 30)
+        self.cell(0, 15, 'GetHired - Resume & Cover Letter', ln=True, align='C')
         self.ln(10)
 
-    def add_content(self, title, content):
-        self.set_font('Arial', 'B', 14)
+    def add_section_title(self, title):
+        self.set_font('Helvetica', 'B', 16)
+        self.set_text_color(0, 102, 204)
         self.cell(0, 10, title, ln=True)
-        self.ln(4)
-        self.set_font('Arial', '', 12)
-        self.multi_cell(0, 10, content)
+        self.ln(5)
+
+    def add_body_text(self, content):
+        self.set_font('Helvetica', '', 12)
+        self.set_text_color(50, 50, 50)
+        self.multi_cell(0, 8, content)
         self.ln(8)
 
-def create_pdf(resume, cover_letter):
-    pdf = PDF()
+def create_beautiful_pdf(resume, cover_letter):
+    pdf = BeautifulPDF()
     pdf.add_page()
-    pdf.add_content("Tailored Resume", sanitize_text(resume))
+    pdf.add_section_title("Tailored Resume")
+    pdf.add_body_text(sanitize_text(resume))
     pdf.add_page()
-    pdf.add_content("Cover Letter", sanitize_text(cover_letter))
+    pdf.add_section_title("Cover Letter")
+    pdf.add_body_text(sanitize_text(cover_letter))
+    return pdf.output(dest='S').encode('latin1')
 
-    pdf_bytes = pdf.output(dest='S').encode('latin1')
-    return pdf_bytes
+# 📧 Email with Attachments
+def send_email_with_attachments(to_email, docx_data, pdf_data):
+    msg = EmailMessage()
+    msg['Subject'] = "Your Tailored Resume & Cover Letter from GetHired 🎯"
+    msg['From'] = SENDER_EMAIL
+    msg['To'] = to_email
+
+    msg.set_content("Hi there!\n\nPlease find attached your Tailored Resume and Cover Letter. Best of luck! 🚀\n\n- GetHired Team")
+
+    # Attach DOCX
+    msg.add_attachment(docx_data.getvalue(), maintype='application', subtype='vnd.openxmlformats-officedocument.wordprocessingml.document', filename="Tailored_Resume_and_CoverLetter.docx")
+    # Attach PDF
+    msg.add_attachment(pdf_data, maintype='application', subtype='pdf', filename="Tailored_Resume_and_CoverLetter.pdf")
+
+    with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
+        smtp.login(SENDER_EMAIL, SENDER_PASSWORD)
+        smtp.send_message(msg)
 
 # 🏠 Streamlit App
 st.set_page_config(page_title="GetHired - Tailor My Resume", page_icon="📝")
@@ -130,7 +156,7 @@ st.caption("Upload your Resume (PDF, DOC, or TXT) + Paste the Job Description. G
 
 st.markdown("---")
 
-# Upload section
+# Upload and Input
 st.subheader("📄 Upload Your Current Resume")
 existing_resume_file = st.file_uploader("Upload Your Resume (PDF, DOC, or TXT)", type=["pdf", "docx", "txt"])
 
@@ -149,26 +175,18 @@ if st.button("🚀 Tailor Resume & Create Cover Letter"):
             with st.spinner("✍️ Tailoring your Resume and writing your Cover Letter..."):
                 try:
                     output = tailor_resume_and_coverletter(existing_resume, job_description)
-                    st.success("✅ Done! Here are your tailored documents:")
 
-                    # Split resume and cover letter
                     if "### Cover Letter" in output:
                         tailored_resume, cover_letter = output.split("### Cover Letter")
                         tailored_resume = tailored_resume.replace("### Tailored Resume", "").strip()
                         cover_letter = cover_letter.strip()
 
-                        st.markdown("---")
-                        st.subheader("📄 Tailored Resume:")
-                        st.code(tailored_resume)
-
-                        st.subheader("✉️ Cover Letter:")
-                        st.code(cover_letter)
-
-                        # Create DOCX and PDF
+                        # Create DOCX and Beautiful PDF
                         docx_file = create_docx(tailored_resume, cover_letter)
-                        pdf_file = create_pdf(tailored_resume, cover_letter)
+                        pdf_file = create_beautiful_pdf(tailored_resume, cover_letter)
 
-                        # Download buttons
+                        st.success("✅ Your Resume & Cover Letter are ready!")
+
                         st.download_button(
                             "📥 Download DOCX (Word)",
                             data=docx_file,
@@ -177,11 +195,24 @@ if st.button("🚀 Tailor Resume & Create Cover Letter"):
                         )
 
                         st.download_button(
-                            "📥 Download PDF (Professional)",
+                            "📥 Download PDF (Beautiful)",
                             data=pdf_file,
                             file_name="Tailored_Resume_and_CoverLetter.pdf",
                             mime="application/pdf"
                         )
+
+                        # 📧 Ask for Email
+                        st.markdown("---")
+                        st.subheader("📩 Send to your Email")
+                        user_email = st.text_input("Enter your Email address:")
+
+                        if st.button("📤 Email me the Documents"):
+                            if user_email:
+                                send_email_with_attachments(user_email, docx_file, pdf_file)
+                                st.success("🎉 Thank you! Your documents have been emailed to you successfully. Best of luck for your job search!")
+                                st.balloons()
+                            else:
+                                st.warning("⚠️ Please enter a valid email address.")
 
                     else:
                         st.error("❌ Unexpected output format. Please try again.")
