@@ -5,6 +5,7 @@ from docx import Document
 from fpdf import FPDF
 import requests
 from io import BytesIO
+import unicodedata
 
 # ✅ Set your Groq API Key
 GROQ_API_KEY = "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"
@@ -16,13 +17,18 @@ def extract_text(file):
         with pdfplumber.open(file) as pdf:
             text = ""
             for page in pdf.pages:
-                text += page.extract_text() + "\n"
+                if page.extract_text():
+                    text += page.extract_text() + "\n"
         return text
     elif file.type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"]:
         doc = docx.Document(file)
         return "\n".join([p.text for p in doc.paragraphs])
     else:
         return file.read().decode("utf-8")
+
+# 🧠 Sanitize text for PDF
+def sanitize_text(text):
+    return unicodedata.normalize('NFKD', text).encode('latin-1', 'ignore').decode('latin-1')
 
 # 🧠 Function to send prompt to Groq API
 def tailor_resume_and_coverletter(existing_resume, job_description):
@@ -110,9 +116,9 @@ class PDF(FPDF):
 def create_pdf(resume, cover_letter):
     pdf = PDF()
     pdf.add_page()
-    pdf.add_content("Tailored Resume", resume)
+    pdf.add_content("Tailored Resume", sanitize_text(resume))
     pdf.add_page()
-    pdf.add_content("Cover Letter", cover_letter)
+    pdf.add_content("Cover Letter", sanitize_text(cover_letter))
 
     pdf_bytes = pdf.output(dest='S').encode('latin1')
     return pdf_bytes
@@ -120,7 +126,7 @@ def create_pdf(resume, cover_letter):
 # 🏠 Streamlit App
 st.set_page_config(page_title="GetHired - Tailor My Resume", page_icon="📝")
 st.title("📝 GetHired - Tailor My Resume")
-st.caption("Upload your Resume (PDF or DOC) + Paste the Job Description. Get a tailored Resume and Cover Letter!")
+st.caption("Upload your Resume (PDF, DOC, or TXT) + Paste the Job Description. Get a tailored Resume and Cover Letter!")
 
 st.markdown("---")
 
