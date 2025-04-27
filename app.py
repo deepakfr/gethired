@@ -17,10 +17,10 @@ GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 # ✅ Set your Email credentials
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 465
-SENDER_EMAIL = 'yourcompanyemail@gmail.com'  # <-- Your Gmail
+SENDER_EMAIL = 'yourcompanyemail@gmail.com'  # <-- YOUR EMAIL
 SENDER_PASSWORD = 'yourapppassword'           # <-- Gmail App Password
 
-# 🧠 Extract Text from uploaded Resume
+# 🧠 Extract Text
 def extract_text(file):
     if file.type == "application/pdf":
         with pdfplumber.open(file) as pdf:
@@ -39,18 +39,7 @@ def extract_text(file):
 def sanitize_text(text):
     return unicodedata.normalize('NFKD', text).encode('latin-1', 'ignore').decode('latin-1')
 
-# 🧠 Auto-extract Top Info (Name, Job Title, Contact Info)
-def extract_top_info(resume_text):
-    lines = resume_text.strip().split('\n')
-    lines = [l.strip() for l in lines if l.strip()]
-    
-    name = lines[0] if len(lines) > 0 else ""
-    job_title = lines[1] if len(lines) > 1 else ""
-    contact_info = lines[2] if len(lines) > 2 else ""
-    
-    return name, job_title, contact_info
-
-# 🧠 Call Groq API to tailor Resume & Cover Letter
+# 🧠 Call Groq API
 def tailor_resume_and_coverletter(existing_resume, job_description):
     prompt = f"""
     Act as a professional resume writer and career expert.
@@ -66,17 +55,20 @@ def tailor_resume_and_coverletter(existing_resume, job_description):
     - Structure Resume into these sections:
       1. Profile Summary
       2. Languages
-      3. Skills
+      3. Skills (Technical & Soft)
       4. Expertise Areas
       5. Academic Projects
       6. Work Experience
       7. Education
       8. Soft Skills
-    - Bullet points start with action verbs.
-    - Clean ATS-optimized style, no personal pronouns.
+    - Bullet points must start with action verbs.
+    - Tone professional (no "I", "we").
+    - No tables, clean ATS friendly text.
+    - Limit resume to max 2 pages.
 
     Then write a Cover Letter:
-    - 3 paragraphs: Introduction, Skills match, Conclusion.
+    - 3 paragraphs (Introduction, Skills match, Conclusion).
+    - Professional and personalized.
 
     Output format:
     ### Resume
@@ -102,13 +94,13 @@ def tailor_resume_and_coverletter(existing_resume, job_description):
     else:
         raise Exception(f"❌ Error from Groq API: {response.status_code} - {response.text}")
 
-# 📄 Create DOCX with centered info
+# 📄 Create DOCX with Centered Top Info
 def create_docx(name, job_title, contact_info, resume_body, cover_letter):
     doc = Document()
 
     # Centered Name
     name_para = doc.add_paragraph()
-    name_para.alignment = 1
+    name_para.alignment = 1  # Center
     run = name_para.add_run(name.upper())
     run.bold = True
     run.font.size = Pt(18)
@@ -197,7 +189,7 @@ def send_email_with_attachments(to_email, docx_data, pdf_data):
 # 🏠 Streamlit App
 st.set_page_config(page_title="GetHired - Tailor My Resume", page_icon="📝")
 st.title("📝 GetHired - Tailor My Resume")
-st.caption("Upload Resume ➔ Paste Job ➔ Auto-detect Info ➔ Tailored DOCX + Beautiful PDF ➔ Email to yourself!")
+st.caption("Upload Resume ➔ Paste Job ➔ Get tailored DOCX + Beautiful PDF ➔ Email to yourself!")
 
 st.markdown("---")
 
@@ -205,26 +197,27 @@ st.markdown("---")
 st.subheader("📄 Upload Your Current Resume")
 existing_resume_file = st.file_uploader("Upload Resume (PDF, DOCX, or TXT)", type=["pdf", "docx", "txt"])
 
-if existing_resume_file:
-    existing_resume = extract_text(existing_resume_file)
-    name, job_title, contact_info = extract_top_info(existing_resume)
-    
-    st.success("✅ Info detected from Resume!")
+st.markdown("---")
+st.subheader("🖊️ Paste Job Description")
+job_description_text = st.text_area("Paste the Job Description here...")
 
-    st.subheader("✏️ Personal Information (Auto-filled, editable)")
-    name = st.text_input("Full Name", value=name)
-    job_title = st.text_input("Job Title", value=job_title)
-    contact_info = st.text_area("Contact Info", value=contact_info)
+st.markdown("---")
+st.subheader("✏️ Personal Information")
+name = st.text_input("Full Name (e.g., Deepakraj DHANARAJ)")
+job_title = st.text_input("Job Title (e.g., Data Science Professional)")
+contact_info = st.text_area("Contact Info (Phone | Email | LinkedIn | GitHub | Location)")
 
-    st.markdown("---")
-    st.subheader("🖊️ Paste Job Description")
-    job_description_text = st.text_area("Paste the Job Description here...")
+if st.button("🚀 Tailor Resume & Create Documents"):
+    if existing_resume_file and job_description_text.strip() and name and job_title and contact_info:
+        existing_resume = extract_text(existing_resume_file)
+        job_description = job_description_text
 
-    if st.button("🚀 Tailor Resume & Create Documents"):
-        if job_description_text.strip():
+        if not existing_resume.strip():
+            st.error("❌ Could not extract text from the uploaded resume. Please check the file.")
+        else:
             with st.spinner("✍️ Tailoring your Resume and writing your Cover Letter..."):
                 try:
-                    output = tailor_resume_and_coverletter(existing_resume, job_description_text)
+                    output = tailor_resume_and_coverletter(existing_resume, job_description)
 
                     if "### Cover Letter" in output:
                         tailored_resume, cover_letter = output.split("### Cover Letter")
@@ -257,5 +250,5 @@ if existing_resume_file:
                         st.error("❌ Unexpected output format. Try again.")
                 except Exception as e:
                     st.error(str(e))
-        else:
-            st.warning("⚠️ Please paste the Job Description to continue.")
+    else:
+        st.warning("⚠️ Please fill all fields (Upload Resume, Paste Job, Personal Info) before proceeding!")
