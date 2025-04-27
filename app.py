@@ -4,7 +4,7 @@ import docx
 import requests
 
 # ✅ Set your Groq API Key
-GROQ_API_KEY = "gsk_WhI4OpClTGCT2LxxvSpMWGdyb3FYBVUkG8jUO0HKpwK6OCylD8U"
+GROQ_API_KEY = "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"
 GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 
 # 🧠 Function to extract text from uploaded file
