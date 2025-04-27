@@ -42,10 +42,15 @@ def extract_top_info(resume_text):
     
     return name, job_title, contact_info
 
-# 🧠 Call Groq API
+# 🧠 Call Groq API (Multilang aware)
 def tailor_resume_and_coverletter(existing_resume, job_description):
     prompt = f"""
     Act as a professional resume writer and career expert.
+
+    IMPORTANT:
+    - Analyze the Job Description language.
+    - Write the Resume and Cover Letter in the same language as the Job Description.
+    - Maintain native-level fluency and tone.
 
     Based on the following current resume:
     {existing_resume}
@@ -55,12 +60,12 @@ def tailor_resume_and_coverletter(existing_resume, job_description):
 
     Strict Instructions:
     - Rewrite the resume fully to match the job description.
-    - Structure Resume into sections like Profile Summary, Languages, Skills, Expertise Areas, Academic Projects, Work Experience, Education, Soft Skills.
-    - Bullet points start with action verbs.
-    - Clean ATS-optimized text.
-    - Then add a Cover Letter at the end.
+    - Structure Resume into sections: Profile Summary, Languages, Skills, Expertise Areas, Academic Projects, Work Experience, Education, Soft Skills.
+    - Bullet points must start with action verbs.
+    - Clean ATS-optimized text (no graphics, no personal pronouns).
+    - Then create a Cover Letter.
 
-    Output everything together.
+    Output everything together, ready for 1-page if possible.
     """
 
     headers = {
@@ -139,9 +144,9 @@ def create_single_pdf(full_text):
     return pdf.output(dest='S').encode('latin1')
 
 # 🏠 Streamlit App
-st.set_page_config(page_title="GetHired - Tailor My Resume", page_icon="📝")
-st.title("📝 GetHired - Tailor My Resume")
-st.caption("Upload Resume ➔ Auto-detect Info ➔ Tailored DOCX + PDF ➔ Download instantly!")
+st.set_page_config(page_title="GetHired - Tailor My Resume (Multi-Lang)", page_icon="📝")
+st.title("📝 GetHired - Tailor My Resume (Multi-Language)")
+st.caption("Upload Resume ➔ Auto-detect Info ➔ Tailored Multilang DOCX + PDF ➔ Download instantly!")
 
 st.markdown("---")
 
@@ -155,7 +160,7 @@ if existing_resume_file:
     st.success(f"✅ Detected: {name} | {job_title}")
 
     st.subheader("🖊️ Paste Job Description")
-    job_description_text = st.text_area("Paste the Job Description here...")
+    job_description_text = st.text_area("Paste the Job Description here... (any language)")
 
     if st.button("🚀 Tailor Resume & Create Documents"):
         if job_description_text.strip():
