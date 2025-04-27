@@ -53,7 +53,6 @@ def tailor_resume_and_coverletter(existing_resume, job_description):
     - Write the Resume and Cover Letter in the same language as the Job Description.
     - Maintain native-level fluency and tone.
 
-
     Based on the following current resume:
     {existing_resume}
 
@@ -61,6 +60,9 @@ def tailor_resume_and_coverletter(existing_resume, job_description):
     {job_description}
 
     Strict Instructions:
+    - Analyze the Job Description language.
+    - Write the Resume and Cover Letter in the same language as the Job Description.
+    - Maintain native-level fluency and tone.
     - Rewrite the resume fully to match the job description.
     - Structure Resume into sections: Profile Summary, Languages, Skills, Expertise Areas, Academic Projects, Work Experience, Education, Soft Skills.
     - Bullet points must start with action verbs.
