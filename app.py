@@ -17,8 +17,8 @@ GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 # ✅ Set your Email credentials
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 465
-SENDER_EMAIL = 'yourcompanyemail@gmail.com'  # <-- Your Gmail
-SENDER_PASSWORD = 'yourapppassword'           # <-- Gmail App Password
+SENDER_EMAIL = 'yourcompanyemail@gmail.com'
+SENDER_PASSWORD = 'yourapppassword'
 
 # 🧠 Extract Text
 def extract_text(file):
@@ -63,15 +63,7 @@ def tailor_resume_and_coverletter(existing_resume, job_description):
 
     Strict Instructions:
     - Rewrite the resume fully to match the job description.
-    - Structure Resume into these sections:
-      1. Profile Summary
-      2. Languages
-      3. Skills
-      4. Expertise Areas
-      5. Academic Projects
-      6. Work Experience
-      7. Education
-      8. Soft Skills
+    - Structure Resume into sections: Profile Summary, Languages, Skills, Expertise Areas, Academic Projects, Work Experience, Education, Soft Skills.
     - Bullet points start with action verbs.
     - Clean ATS-optimized text, no personal pronouns.
 
@@ -197,7 +189,7 @@ def send_email_with_attachments(to_email, docx_data, pdf_data):
 # 🏠 Streamlit App
 st.set_page_config(page_title="GetHired - Tailor My Resume", page_icon="📝")
 st.title("📝 GetHired - Tailor My Resume")
-st.caption("Upload Resume ➔ Auto-detect Info ➔ Tailored DOCX + PDF ➔ Email to yourself!")
+st.caption("Upload Resume ➔ Auto-detect Info ➔ Tailored DOCX + Beautiful PDF ➔ Email to yourself!")
 
 st.markdown("---")
 
@@ -219,10 +211,11 @@ if existing_resume_file:
                 try:
                     output = tailor_resume_and_coverletter(existing_resume, job_description_text)
 
-                    if "### Cover Letter" in output:
-                        tailored_resume, cover_letter = output.split("### Cover Letter")
-                        tailored_resume = tailored_resume.replace("### Resume", "").strip()
-                        cover_letter = cover_letter.strip()
+                    # Smart Split
+                    if "Cover Letter" in output:
+                        parts = output.split("Cover Letter")
+                        tailored_resume = parts[0].replace("### Resume", "").replace("###", "").strip()
+                        cover_letter = parts[1].replace("###", "").strip() if len(parts) > 1 else ""
 
                         docx_file = create_docx(name, job_title, contact_info, tailored_resume, cover_letter)
                         pdf_file = create_beautiful_pdf(tailored_resume, cover_letter)
@@ -244,7 +237,7 @@ if existing_resume_file:
                             else:
                                 st.warning("⚠️ Please enter a valid email address.")
                     else:
-                        st.error("❌ Unexpected output format.")
+                        st.error("❌ The AI response did not contain a Cover Letter. Please retry.")
                 except Exception as e:
                     st.error(str(e))
         else:
