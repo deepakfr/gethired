@@ -54,12 +54,13 @@ def tailor_resume_and_coverletter(existing_resume, job_description):
     ### Cover Letter
     [cover letter here]
     """
-    response = openai.ChatCompletion.create(
+    response = openai.resources.chat.completions.create(
         model="llama3-8b-8192",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
     )
     return response.choices[0].message.content
+
 
 # 🏠 Streamlit App
 st.set_page_config(page_title="GetHired - Tailor My Resume", page_icon="📝")
