@@ -3,3 +3,4 @@ openai
 fpdf
 pdfplumber
 python-docx
+requests
