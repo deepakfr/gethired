@@ -148,8 +148,8 @@ def create_single_pdf(full_text):
     return pdf.output(dest='S').encode('latin1')
 
 # 🏠 Streamlit App
-st.set_page_config(page_title="LangX - Tailor My Resume (Multi-Lang)", page_icon="📝")
-st.title("📝 LangX - Tailor My Resume (Multi-Language)")
+st.set_page_config(page_title="LangX - Get Tailored Resume & Cover Letter (Multi-Lang)", page_icon="📝")
+st.title("📝 LangX - Get Tailored Resume & Cover Letter under seconds (Multi-Language)")
 st.caption("Upload Resume ➔ Auto-detect Info ➔ Tailored Multilang DOCX + PDF ➔ Download instantly!. Powered by deepak labs")
 
 st.markdown("---")
